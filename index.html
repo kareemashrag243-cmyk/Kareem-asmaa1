@@ -335,12 +335,49 @@ section{
   color:#9d7950;
 }
 
+/* UPLOAD CONTAINER STYLES */
+.upload-container{
+  margin-top: 25px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.upload-btn-label{
+  border: 1px solid #9d7950;
+  background: transparent;
+  color: #211b19;
+  padding: 10px 22px;
+  border-radius: 100px;
+  cursor: pointer;
+  letter-spacing: 2px;
+  font-size: 11px;
+  text-transform: uppercase;
+  transition: .3s;
+  display: inline-block;
+}
+
+.upload-btn-label:hover{
+  background: #9d7950;
+  color: #fff;
+}
+
+#imageInput{
+  display: none;
+}
+
+.upload-status{
+  font-size: 12px;
+  color: #9d7950;
+}
+
 /* =========================
    SWIPE MEMORY CARDS
 ========================= */
 
 .memory-section{
-  margin-top:80px;
+  margin-top:40px;
   position:relative;
   min-height:620px;
   display:flex;
@@ -690,7 +727,7 @@ footer{
 
   .memory-section{
     min-height:560px;
-    margin-top:65px;
+    margin-top:40px;
   }
 
   .memory-stack{
@@ -842,6 +879,13 @@ footer{
         Little moments.<br>
         Forever ours.
       </h2>
+
+      <!-- قسم إضافة صورة جديدة -->
+      <div class="upload-container">
+        <label for="imageInput" class="upload-btn-label">+ إضافة ذكرى جديدة</label>
+        <input type="file" id="imageInput" accept="image/*">
+        <div id="uploadStatus" class="upload-status"></div>
+      </div>
 
     </div>
 
@@ -1355,11 +1399,6 @@ window.addEventListener(
    AUTO SWIPE
 ========================= */
 
-/*
-  لو مش عايز الصور تتحرك لوحدها،
-  سيب الجزء ده زي ما هو.
-*/
-
 let autoSwipe = setInterval(() => {
 
   if(!isDragging && cards.length > 1){
@@ -1381,8 +1420,7 @@ let autoSwipe = setInterval(() => {
 },5000);
 
 
-/* إيقاف الحركة التلقائية
-   لو المستخدم بدأ يتفاعل */
+/* إيقاف الحركة التلقائية */
 
 stack.addEventListener('touchstart', () => {
 
@@ -1400,6 +1438,53 @@ stack.addEventListener('mousedown', () => {
 /* البداية */
 
 updateCards();
+
+
+/* =========================
+   VERCEL BLOB UPLOAD LOGIC
+========================= */
+
+const imageInput = document.getElementById('imageInput');
+const uploadStatus = document.getElementById('uploadStatus');
+
+imageInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  uploadStatus.textContent = "جاري رفع الصورة إلى Vercel Blob...";
+
+  try {
+    // إرسال الصورة لـ API الـ Serverless الخاص بك في Vercel
+    const response = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, {
+      method: 'POST',
+      body: file,
+    });
+
+    if (!response.ok) {
+      throw new Error("فشل الرفع");
+    }
+
+    const data = await response.json();
+    uploadStatus.textContent = "تم رفع الصورة بنجاح! ✨";
+
+    // إضافة كارت جديد بحجم الصورة المرفوعة إلى أول السلسلة
+    const newCard = document.createElement('div');
+    newCard.className = 'memory-card';
+    newCard.innerHTML = `<img src="${data.url}" alt="New Memory">`;
+    
+    stack.prepend(newCard);
+    
+    // إعادة تحديث قائمة الكروت لتعمل باللمس والسحب
+    cards = Array.from(stack.querySelectorAll('.memory-card'));
+    updateCards();
+
+    setTimeout(() => { uploadStatus.textContent = ""; }, 3000);
+
+  } catch (err) {
+    console.error(err);
+    uploadStatus.textContent = "حدث خطأ أثناء الرفع، تأكد من إعدادات Vercel Blob.";
+  }
+});
 
 
 /* =========================
